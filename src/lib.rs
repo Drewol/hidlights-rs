@@ -4,11 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use bitvec::{
-    order::{Lsb0, Msb0},
-    store::BitStore,
-    view::BitView,
-};
+use bitvec::{order::Msb0, view::BitView};
 use extfn::extfn;
 use hidapi::{HidApi, HidDevice};
 use hidparser::report_data_types::StringIndex;
@@ -319,10 +315,8 @@ impl DeviceHandle {
                     let value = x.start() + ((x.end() - x.start()) as f32 * real_value) as i32;
                     let value = value as u32;
                     if value > 0 {
-                        println!("{x:?} * {real_value} = {value}");
                         for (src_bit, dst_bit) in out.bits.clone().rev().enumerate() {
                             let set = (value & (1 << src_bit)) != 0;
-                            dbg!(src_bit, set);
                             bits.set(dst_bit as _, set);
                         }
                     }

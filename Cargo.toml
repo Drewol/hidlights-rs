@@ -2,16 +2,18 @@
 name = "hidlights"
 version = "0.1.0"
 edition = "2021"
+description = "Library for controlling lighting peripherals using USB HID"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hidapi = "*"
-hidparser = "*"
-hut = "*"
-extfn = "*"
+hidapi = "2"
+hidparser = "1"
+hut = "0.4"
+extfn = "0.1"
 thiserror = "2.0.12"
 bitvec = "1"
 
 [dev-dependencies]
-eframe = "*"
+eframe = "0.32"

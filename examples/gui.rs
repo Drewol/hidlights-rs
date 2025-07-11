@@ -1,14 +1,14 @@
 use eframe::{egui, App, NativeOptions};
 
 struct HidLightGui {
-    api: hidlights::HidLights,
+    _api: hidlights::HidLights,
     open_device: Option<hidlights::DeviceHandle>,
     reports: Option<Vec<hidlights::Report>>,
     devices: Vec<hidlights::DeviceInfo>,
 }
 
 impl App for HidLightGui {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.set_width(ctx.available_rect().width());
@@ -42,7 +42,7 @@ impl App for HidLightGui {
                             });
                             if changed {
                                 println!("{:#?}", &rep);
-                                dev.write_report(rep);
+                                _ = dev.write_report(rep);
                             }
                             ui.end_row();
                         }
@@ -101,7 +101,7 @@ fn main() {
             let devices = api.devices();
 
             Ok(Box::new(HidLightGui {
-                api,
+                _api: api,
                 devices,
                 open_device: None,
                 reports: None,
