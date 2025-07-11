@@ -10,6 +10,9 @@ use hidapi::{HidApi, HidDevice};
 use hidparser::report_data_types::StringIndex;
 use thiserror::Error;
 
+pub use hidapi;
+pub use hut;
+
 type Result<T> = std::result::Result<T, HidLightError>;
 
 #[derive(Debug, Error)]
@@ -57,11 +60,8 @@ fn parent_name(self: &Vec<hidparser::ReportCollection>, dev: &HidDevice) -> Opti
 }
 
 #[extfn]
-fn is_vendor_usage(self: hidparser::report_data_types::Usage) -> bool {
-    let Ok(usage) = hut::Usage::new_from_page_and_id(self.page(), self.id()) else {
-        return true; // We don't know so be safe
-    };
-    match usage {
+fn is_vendor_usage(self: &hut::Usage) -> bool {
+    match self {
         hut::Usage::GenericDesktop(_) => false,
         hut::Usage::SimulationControls(_) => false,
         hut::Usage::VRControls(_) => false,
@@ -103,6 +103,11 @@ fn is_vendor_usage(self: hidparser::report_data_types::Usage) -> bool {
     }
 }
 
+#[extfn]
+fn into_hut(self: hidparser::report_data_types::Usage) -> Option<hut::Usage> {
+    hut::Usage::new_from_page_and_id(self.page(), self.id()).ok()
+}
+
 pub struct HidLights {
     hidapi: Rc<hidapi::HidApi>,
 }
@@ -112,7 +117,7 @@ pub struct DeviceInfo {
     pub pid: u16,
     pub name: Option<String>,
     pub manufacturer: Option<String>,
-    pub usage: Option<String>,
+    pub usage: Option<hut::Usage>,
     pub serial: Option<String>,
     path: CString,
     api: Rc<HidApi>,
@@ -141,9 +146,7 @@ impl HidLights {
                     .manufacturer_string()
                     .filter(|x| !x.is_empty())
                     .map(|x| x.to_string()),
-                usage: hut::Usage::new_from_page_and_id(x.usage_page(), x.usage())
-                    .map(|x| x.name())
-                    .ok(),
+                usage: hut::Usage::new_from_page_and_id(x.usage_page(), x.usage()).ok(),
                 serial: x
                     .serial_number()
                     .filter(|x| !x.is_empty())
@@ -154,6 +157,7 @@ impl HidLights {
                 path: x.path().to_owned(),
                 api: self.hidapi.clone(),
             })
+            .filter(|x| !x.is_vendor_usage())
             .collect()
     }
 }
@@ -162,6 +166,10 @@ impl DeviceInfo {
     pub fn open(&self) -> Result<DeviceHandle> {
         let dev = self.api.open_path(&self.path)?;
         Ok(DeviceHandle { device: dev })
+    }
+
+    pub fn is_vendor_usage(&self) -> bool {
+        self.usage.as_ref().is_some_and(|u| u.is_vendor_usage())
     }
 }
 
@@ -211,7 +219,10 @@ impl DeviceHandle {
                 for rep_field in rep.fields {
                     match rep_field {
                         hidparser::ReportField::Variable(variable_field) => {
-                            if variable_field.usage.is_vendor_usage()
+                            if variable_field
+                                .usage
+                                .into_hut()
+                                .is_some_and(|x| x.is_vendor_usage())
                                 || !variable_field.attributes.variable
                             {
                                 continue;
@@ -247,7 +258,7 @@ impl DeviceHandle {
                             {
                                 let usage =
                                     hidparser::report_data_types::Usage::from(usage.start());
-                                if usage.is_vendor_usage() {
+                                if usage.into_hut().is_some_and(|x| x.is_vendor_usage()) {
                                     continue;
                                 }
                                 let mut name = string
@@ -289,9 +300,9 @@ impl DeviceHandle {
     }
 
     pub fn write_report(&self, report: &Report) -> Result<()> {
-        let mut buffer = vec![0u8; report.size_in_bits.div_ceil(8)];
+        let mut buffer = vec![0u8; report.size_in_bits.div_ceil(8) + 1];
         buffer[0] = report.id as u8;
-        let bits = buffer.view_bits_mut::<Msb0>();
+        let bits = buffer[1..].view_bits_mut::<Msb0>();
         //TODO: Shouldn't have to set each bit individually, could set it using far fewer operations
         for out in &report.outputs {
             let real_value = out.real_value.clamp(0.0, 1.0);
@@ -332,5 +343,11 @@ impl DeviceHandle {
 impl DeviceOutput {
     pub fn is_toggle(&self) -> bool {
         matches!(self.kind, DeviceOutputValue::Toggle)
+    }
+}
+
+impl Report {
+    pub fn id(&self) -> u32 {
+        self.id
     }
 }

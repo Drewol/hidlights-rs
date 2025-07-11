@@ -16,9 +16,9 @@ impl App for HidLightGui {
                     if let (Some(dev), Some(reports)) =
                         (self.open_device.as_ref(), self.reports.as_mut())
                     {
-                        for (i, rep) in reports.iter_mut().enumerate() {
+                        for rep in reports.iter_mut() {
                             let mut changed = false;
-                            ui.collapsing(format!("Report {}", i), |ui| {
+                            ui.collapsing(format!("Report {}", rep.id()), |ui| {
                                 for out in rep.outputs.iter_mut() {
                                     if let Some(name) = out.name.as_ref() {
                                         ui.label(name);
@@ -52,27 +52,24 @@ impl App for HidLightGui {
                             self.reports = None;
                         }
                     } else {
+                        ui.label("Name");
+                        ui.label("Mfg");
+                        ui.label("Usage");
+                        ui.label("VID/PID");
+                        ui.end_row();
                         for dev in &self.devices {
-                            let name = [
-                                dev.name.as_ref(),
-                                dev.manufacturer.as_ref(),
-                                dev.usage.as_ref(),
-                                dev.serial.as_ref(),
+                            for ele in [
+                                dev.name.clone(),
+                                dev.manufacturer.clone(),
+                                dev.usage.as_ref().map(|x| x.name()),
                             ]
-                            .iter()
-                            .filter(|x| x.is_some_and(|x| !x.is_empty()))
-                            .map(|x| x.unwrap())
-                            .map(|x| x.clone())
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                            .into_iter()
+                            {
+                                ui.label(ele.unwrap_or_default());
+                            }
 
-                            let name = if name.is_empty() {
-                                format!("VID/PID: {:04x}/{:04x}", dev.vid, dev.pid)
-                            } else {
-                                name
-                            };
-
-                            ui.label(name);
+                            let vidpid = { format!("{:04x}/{:04x}", dev.vid, dev.pid) };
+                            ui.label(vidpid);
 
                             if ui.button("Select").clicked() {
                                 if let Ok(dev) = dev.open() {
