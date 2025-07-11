@@ -1,0 +1,2 @@
+# hidlights - HID Lighting control library
+Rust library for controlling lighting peripherals using USB HID. Main intended use case if for rhythm game controllers, [example video](https://www.youtube.com/watch?v=MCNMir-E_Rc).
