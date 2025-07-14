@@ -1,7 +1,7 @@
 use std::{
-    ffi::CString,
+    ffi::{CStr, CString},
     ops::{Range, RangeInclusive},
-    rc::Rc,
+    sync::Arc,
 };
 
 use bitvec::{order::Msb0, view::BitView};
@@ -109,7 +109,7 @@ fn into_hut(self: hidparser::report_data_types::Usage) -> Option<hut::Usage> {
 }
 
 pub struct HidLights {
-    hidapi: Rc<hidapi::HidApi>,
+    hidapi: Arc<hidapi::HidApi>,
 }
 
 pub struct DeviceInfo {
@@ -120,7 +120,7 @@ pub struct DeviceInfo {
     pub usage: Option<hut::Usage>,
     pub serial: Option<String>,
     path: CString,
-    api: Rc<HidApi>,
+    api: Arc<HidApi>,
 }
 
 pub struct DeviceHandle {
@@ -130,7 +130,7 @@ pub struct DeviceHandle {
 impl HidLights {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            hidapi: Rc::new(hidapi::HidApi::new()?),
+            hidapi: Arc::new(hidapi::HidApi::new()?),
         })
     }
 
@@ -170,6 +170,10 @@ impl DeviceInfo {
 
     pub fn is_vendor_usage(&self) -> bool {
         self.usage.as_ref().is_some_and(|u| u.is_vendor_usage())
+    }
+
+    pub fn path(&self) -> &CStr {
+        &self.path
     }
 }
 
@@ -314,7 +318,7 @@ impl DeviceHandle {
                     }
                 }
                 DeviceOutputValue::Signed(x) => {
-                    // This doesn't actually work, need to consider compliment depending on bit count
+                    // Unused for now
                     let value = x.start() + ((x.end() - x.start()) as f32 * real_value) as i32;
                     let value = value as i32;
 
@@ -343,6 +347,10 @@ impl DeviceHandle {
 impl DeviceOutput {
     pub fn is_toggle(&self) -> bool {
         matches!(self.kind, DeviceOutputValue::Toggle)
+    }
+
+    pub fn bits(&self) -> &Range<u32> {
+        &self.bits
     }
 }
 
