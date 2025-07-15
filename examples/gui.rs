@@ -41,7 +41,6 @@ impl App for HidLightGui {
                                 }
                             });
                             if changed {
-                                println!("{:#?}", &rep);
                                 _ = dev.write_report(rep);
                             }
                             ui.end_row();
